@@ -14,7 +14,13 @@ admin.initializeApp({
 
 const app = express();
 // middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: [process.env.CLIENT_DOMAIN],
+    credentials: true,
+    optionsSuccessStatus: 200,
+  })
+);
 app.use(express.json());
 
 // jwt middlewares
@@ -43,7 +49,45 @@ const client = new MongoClient(process.env.MONGODB_URI, {
 });
 async function run() {
   try {
-    
+    const db = client.db("AssetVerse");
+    const employeeCollection = db.collection("Employee");
+    const hrManagerCollection = db.collection("HrManager");
+    const packagesCollection = db.collection("Packages");
+
+    // get all packagesCollection
+    app.get("/packages", async (req, res) => {
+      const result = await packagesCollection.find().toArray();
+      res.send(result);
+    });
+
+    // save employee data from mongo db
+    app.post("/employee", async (req, res) => {
+      const employeeInfo = req.body;
+      const result = await employeeCollection.insertOne(employeeInfo);
+      res.send(result);
+    });
+
+    app.get("/employee", async (req, res) => {
+      const email = req.query.email;
+      const query = {
+        email: email,
+      };
+      const result = await employeeCollection.findOne(query);
+      res.send(result);
+    });
+
+    // save hr data from mongo db
+    app.post("/hrManager", async (req, res) => {
+      const HRInfo = req.body;
+      const result = await hrManagerCollection.insertOne(HRInfo);
+      res.send(result);
+    });
+
+    app.get("/hrManager", async (req, res) => {
+      const result = await hrManagerCollection.find().toArray();
+      res.send(result);
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
