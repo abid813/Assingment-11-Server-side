@@ -53,6 +53,7 @@ async function run() {
     const employeeCollection = db.collection("Employee");
     const hrManagerCollection = db.collection("HrManager");
     const packagesCollection = db.collection("Packages");
+    const assetsCollection = db.collection("assets");
 
     // get all packagesCollection
     app.get("/packages", async (req, res) => {
@@ -84,11 +85,23 @@ async function run() {
     });
 
     app.get("/hrManager", async (req, res) => {
-       const email = req.query.email;
+      const email = req.query.email;
       const query = {
         email: email,
       };
       const result = await hrManagerCollection.findOne(query);
+      res.send(result);
+    });
+
+    // save assets data from mongodb
+    app.post("/assets", async (req, res) => {
+      const productInfo = req.body;
+      const result = await assetsCollection.insertOne(productInfo);
+      res.send(result);
+    });
+
+    app.get("/assets", async (req, res) => {
+      const result = await assetsCollection.find().toArray();
       res.send(result);
     });
 
