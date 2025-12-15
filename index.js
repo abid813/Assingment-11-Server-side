@@ -54,6 +54,7 @@ async function run() {
     const hrManagerCollection = db.collection("HrManager");
     const packagesCollection = db.collection("Packages");
     const assetsCollection = db.collection("assets");
+    const requestCollection = db.collection("requestData");
 
     // packagesCollection
     app.get("/packages", async (req, res) => {
@@ -141,6 +142,36 @@ async function run() {
       const result = await assetsCollection.deleteOne(query);
       res.send(result);
     });
+
+    // request Collection
+    app.post("/requestData", async (req, res) => {
+      const requestInfo = req.body;
+      const result = await requestCollection.insertOne(requestInfo);
+      res.send(result);
+    });
+
+    app.get("/requestData", async (req, res) => {
+      const { search, filter } = req.query;
+      let query = {};
+
+
+      if (search) {
+        query.$or = [
+          { "productInfo.productName": { $regex: search, $options: "i" } },
+          { requestedPerson: { $regex: search, $options: "i" } },
+        ];
+      }
+      
+      if (filter) {
+        query["productInfo.productType"] = filter;
+      }
+      const result = await requestCollection
+        .find(query)
+        .sort({ dateAdded: -1 })
+        .toArray();
+      res.send(result);
+    });
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
