@@ -70,13 +70,38 @@ async function run() {
     });
 
     app.get("/employee", async (req, res) => {
-      const email = req.query.email;
-      const query = {
-        email: email,
-      };
-      const result = await employeeCollection.findOne(query);
+      const { HRManagerUid, search } = req.query;
+      const query = {};
+      if (HRManagerUid) {
+        query.HRManagerUid = HRManagerUid;
+      }
+      if (search) {
+        query.name = { $regex: search, $options: "i" };
+      }
+
+      const result = await employeeCollection.find(query).toArray();
       res.send(result);
     });
+
+    app.patch("/employee/:id", async (req, res) => {
+      const { HRManagerUid, assetCount, joinDate } = req.body;
+      const query = { _id: new ObjectId(req.params.id) };
+      const addInfo = {
+        $set: {
+          HRManagerUid,
+          assetCount,
+          joinDate,
+        },
+      };
+      const result = await employeeCollection.updateOne(query, addInfo);
+      res.send(result);
+    });
+
+    app.delete('/employee/:id', async (req,res) => {
+      const query = {_id:new ObjectId(req.params.id)}
+      const result = await employeeCollection.deleteOne(query)
+      res.send(result)
+    })
 
     // hrManager collection
     app.post("/hrManager", async (req, res) => {
@@ -86,11 +111,7 @@ async function run() {
     });
 
     app.get("/hrManager", async (req, res) => {
-      const email = req.query.email;
-      const query = {
-        email: email,
-      };
-      const result = await hrManagerCollection.findOne(query);
+      const result = await hrManagerCollection.findOne();
       res.send(result);
     });
 
@@ -151,9 +172,12 @@ async function run() {
     });
 
     app.get("/requestData", async (req, res) => {
-      const { search, filter } = req.query;
+      const { search, filter, email } = req.query;
       let query = {};
 
+      if (email) {
+        query.requestedEmail = email;
+      }
 
       if (search) {
         query.$or = [
@@ -161,7 +185,7 @@ async function run() {
           { requestedPerson: { $regex: search, $options: "i" } },
         ];
       }
-      
+
       if (filter) {
         query["productInfo.productType"] = filter;
       }
@@ -172,6 +196,29 @@ async function run() {
       res.send(result);
     });
 
+    app.patch("/requestData/:id", async (req, res) => {
+      const { status, quantity, productId, productQuantity } = req.body;
+      const query = { _id: new ObjectId(req.params.id) };
+      const updateStatus = {
+        $set: {
+          status: status,
+          statusUpdateAt: new Date().toLocaleDateString(),
+        },
+      };
+      if (status === "approve") {
+        const correctQuantity = productQuantity - quantity;
+        const query = { _id: new ObjectId(productId) };
+        const updateQuantity = {
+          $set: {
+            productQuantity: correctQuantity,
+          },
+        };
+        const result = await assetsCollection.updateOne(query, updateQuantity);
+        res.send(result);
+      }
+      const result = await requestCollection.updateOne(query, updateStatus);
+      res.send(result);
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
