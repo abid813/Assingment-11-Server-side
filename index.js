@@ -72,6 +72,7 @@ async function run() {
     app.get("/employee", async (req, res) => {
       const { HRManagerUid, search } = req.query;
       const query = {};
+
       if (HRManagerUid) {
         query.HRManagerUid = HRManagerUid;
       }
@@ -80,6 +81,13 @@ async function run() {
       }
 
       const result = await employeeCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    app.get("/employee/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email };
+      const result = await employeeCollection.findOne(query);
       res.send(result);
     });
 
@@ -97,11 +105,11 @@ async function run() {
       res.send(result);
     });
 
-    app.delete('/employee/:id', async (req,res) => {
-      const query = {_id:new ObjectId(req.params.id)}
-      const result = await employeeCollection.deleteOne(query)
-      res.send(result)
-    })
+    app.delete("/employee/:id", async (req, res) => {
+      const query = { _id: new ObjectId(req.params.id) };
+      const result = await employeeCollection.deleteOne(query);
+      res.send(result);
+    });
 
     // hrManager collection
     app.post("/hrManager", async (req, res) => {
@@ -111,7 +119,9 @@ async function run() {
     });
 
     app.get("/hrManager", async (req, res) => {
-      const result = await hrManagerCollection.findOne();
+      const email = req.query.email;
+      const query = { email };
+      const result = await hrManagerCollection.findOne(query);
       res.send(result);
     });
 
@@ -213,8 +223,8 @@ async function run() {
             productQuantity: correctQuantity,
           },
         };
+
         const result = await assetsCollection.updateOne(query, updateQuantity);
-        res.send(result);
       }
       const result = await requestCollection.updateOne(query, updateStatus);
       res.send(result);
