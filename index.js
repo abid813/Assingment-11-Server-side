@@ -70,8 +70,12 @@ async function run() {
     });
 
     app.get("/employee", async (req, res) => {
-      const { HRManagerUid, search } = req.query;
+      const { HRManagerUid, search, email } = req.query;
       const query = {};
+
+      if (email) {
+        query.email = email;
+      }
 
       if (HRManagerUid) {
         query.HRManagerUid = HRManagerUid;
@@ -205,12 +209,15 @@ async function run() {
     });
 
     app.get("/requestData", async (req, res) => {
+      // const email = req.params.email
       const { search, filter, email } = req.query;
       let query = {};
 
       if (email) {
-        // query.requestedEmail = email;
-        query["productInfo.hrEmail"] = email;
+        query.$or = [
+          { requestedEmail: email },
+          { "productInfo.hrEmail": email },
+        ];
       }
 
       if (search) {
@@ -231,7 +238,15 @@ async function run() {
     });
 
     app.patch("/requestData/:id", async (req, res) => {
-      const { status, quantity, productId, productQuantity } = req.body;
+      const {
+        status,
+        quantity,
+        productId,
+        productQuantity,
+        requestedEmail,
+        requestedAsset,
+        requestedId,
+      } = req.body;
       const query = { _id: new ObjectId(req.params.id) };
       const updateStatus = {
         $set: {
@@ -249,6 +264,17 @@ async function run() {
         };
 
         const result = await assetsCollection.updateOne(query, updateQuantity);
+        console.log(result.modifiedCount);
+        if (result.modifiedCount === 1) {
+          const updateCount = requestedAsset + 1;
+          const query = { email: requestedEmail };
+          const updateAsset = {
+            $set: {
+              assetCount: updateCount,
+            },
+          };
+          const result = await employeeCollection.updateOne(query, updateAsset);
+        }
       }
       const result = await requestCollection.updateOne(query, updateStatus);
       res.send(result);
