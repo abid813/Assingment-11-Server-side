@@ -92,7 +92,16 @@ async function run() {
     });
 
     app.patch("/employee/:id", async (req, res) => {
-      const { HRManagerUid, assetCount, joinDate } = req.body;
+      const {
+        HRManagerUid,
+        assetCount,
+        joinDate,
+        hrManagerId,
+        hrEmail,
+        hrSubscribtion,
+        currentEmployees,
+        hrAddedNewEmployee,
+      } = req.body;
       const query = { _id: new ObjectId(req.params.id) };
       const addInfo = {
         $set: {
@@ -101,7 +110,18 @@ async function run() {
           joinDate,
         },
       };
+
       const result = await employeeCollection.updateOne(query, addInfo);
+      if (result.modifiedCount === 1) {
+        const correctEmployee = currentEmployees + hrAddedNewEmployee;
+        const query = { _id: new ObjectId(hrManagerId) };
+        const hrUpdateInfo = {
+          $set: {
+            currentEmployees: correctEmployee,
+          },
+        };
+        const result = await hrManagerCollection.updateOne(query, hrUpdateInfo);
+      }
       res.send(result);
     });
 
@@ -154,8 +174,11 @@ async function run() {
     });
 
     app.get("/assets", async (req, res) => {
-      const search = req.query.search;
+      const { search, email } = req.query;
       const query = {};
+      if (email) {
+        query.hrEmail = email;
+      }
       if (search) {
         query.productName = { $regex: search, $options: "i" };
       }
@@ -186,7 +209,8 @@ async function run() {
       let query = {};
 
       if (email) {
-        query.requestedEmail = email;
+        // query.requestedEmail = email;
+        query["productInfo.hrEmail"] = email;
       }
 
       if (search) {
