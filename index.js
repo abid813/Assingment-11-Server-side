@@ -1,7 +1,9 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const app = express();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const stripe = require("stripe")(process.env.STRIPE_SCRECT_KEY);
 const admin = require("firebase-admin");
 const port = process.env.PORT || 3000;
 const decoded = Buffer.from(process.env.FB_SERVICE_KEY, "base64").toString(
@@ -12,16 +14,9 @@ admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
 
-const app = express();
 // middleware
-app.use(
-  cors({
-    origin: [process.env.CLIENT_DOMAIN],
-    credentials: true,
-    optionsSuccessStatus: 200,
-  })
-);
 app.use(express.json());
+app.use(cors());
 
 // jwt middlewares
 const verifyJWT = async (req, res, next) => {
@@ -55,6 +50,7 @@ async function run() {
     const packagesCollection = db.collection("Packages");
     const assetsCollection = db.collection("assets");
     const requestCollection = db.collection("requestData");
+    const paymentCollection = db.collection("payments");
 
     // packagesCollection
     app.get("/packages", async (req, res) => {
@@ -203,6 +199,93 @@ async function run() {
         );
       }
       res.send(result);
+    });
+
+    // payment related api
+    app.post("/create-checkout-session", async (req, res) => {
+      const {
+        packageName,
+        packageCost,
+        employeeLimit,
+        packageId,
+        hrPackage,
+        hrPackageLimit,
+        hrName,
+        hrEmail,
+        hrId,
+      } = req.body;
+
+      const amount = Math.round(Number(packageCost) * 100);
+      const session = await stripe.checkout.sessions.create({
+        customer_email: hrEmail,
+        line_items: [
+          {
+            price_data: {
+              currency: "usd",
+              unit_amount: amount,
+              product_data: {
+                name: `please pay for ${packageName} package`,
+              },
+            },
+            quantity: 1,
+          },
+        ],
+
+        mode: "payment",
+        metadata: {
+          packageId,
+          packageLimit: employeeLimit,
+          hrId,
+          hrName,
+          hrPackage,
+          hrPackageLimit,
+          packageName,
+        },
+        success_url: `${process.env.CLIENT_DOMAIN}/dashboard/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.CLIENT_DOMAIN}/dashboard/payment-cancel`,
+      });
+      res.send({ url: session.url });
+    });
+
+    app.patch("/payment-success", async (req, res) => {
+      const sessionId = req.query.session_id;
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      console.log(session);
+      if (session.payment_status === "paid") {
+        const {
+          hrId,
+          hrName,
+          hrPackage,
+          hrPackageLimit,
+          packageId,
+          packageLimit,
+          packageName,
+        } = session.metadata;
+        const totalPackageLimit = Number(hrPackageLimit) + Number(packageLimit);
+        const query = { _id: new ObjectId(hrId) };
+        const updateInfo = {
+          $set: {
+            packageLimit: totalPackageLimit,
+            subscription: packageName,
+          },
+        };
+        const result = await hrManagerCollection.updateOne(query, updateInfo);
+        const paymentInfo = {
+          hrEmail: session.customer_email,
+          packageName,
+          employeeLimit: packageLimit,
+          amount: session.amount_total / 100,
+          transactionId: session.payment_intent,
+          paymentDate: new Date().toLocaleDateString(),
+          status:session.payment_status
+        };
+
+
+        await paymentCollection.insertOne(paymentInfo);
+
+        res.send(result);
+      }
+      res.send({ success: true });
     });
 
     // hrManager collection
