@@ -269,6 +269,7 @@ async function run() {
             subscription: packageName,
           },
         };
+        
         const result = await hrManagerCollection.updateOne(query, updateInfo);
         const paymentInfo = {
           hrEmail: session.customer_email,
