@@ -58,14 +58,25 @@ async function run() {
       res.send(result);
     });
 
+    // paymentCollection
+    app.get("/payment", async (req, res) => {
+      const email = req.query.email
+      const query = {}
+      if (email) {
+        query.hrEmail = email
+      }
+      const result = await paymentCollection.find(query).toArray()
+      res.send(result)
+    })
+
     //  employee collection
-    app.post("/employee", async (req, res) => {
+    app.post("/employee", verifyJWT, async (req, res) => {
       const employeeInfo = req.body;
       const result = await employeeCollection.insertOne(employeeInfo);
       res.send(result);
     });
 
-    app.get("/employee/companies/:email", async (req, res) => {
+    app.get("/employee/companies/:email",verifyJWT, async (req, res) => {
       const email = req.params.email;
 
       const employee = await employeeCollection.findOne({ email });
@@ -80,7 +91,7 @@ async function run() {
       res.send(companies);
     });
 
-    app.get("/team/:hrUid", async (req, res) => {
+    app.get("/team/:hrUid", verifyJWT, async (req, res) => {
       const hrUid = req.params.hrUid;
 
       const team = await employeeCollection
@@ -146,7 +157,7 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/employee/:id", async (req, res) => {
+    app.patch("/employee/:id", verifyJWT, async (req, res) => {
       const {
         HRManagerUid,
         assetCount,
@@ -188,7 +199,7 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/employee/:id", async (req, res) => {
+    app.delete("/employee/:id", verifyJWT, async (req, res) => {
       const id = req.query.hrId;
       const query = { _id: new ObjectId(req.params.id) };
       const result = await employeeCollection.deleteOne(query);
@@ -202,7 +213,7 @@ async function run() {
     });
 
     // payment related api
-    app.post("/create-checkout-session", async (req, res) => {
+    app.post("/create-checkout-session", verifyJWT, async (req, res) => {
       const {
         packageName,
         packageCost,
@@ -247,10 +258,15 @@ async function run() {
       res.send({ url: session.url });
     });
 
-    app.patch("/payment-success", async (req, res) => {
+    app.patch("/payment-success", verifyJWT, async (req, res) => {
       const sessionId = req.query.session_id;
       const session = await stripe.checkout.sessions.retrieve(sessionId);
-      console.log(session);
+      const transactionId = session.payment_intent
+      const query = {transactionId:transactionId}
+      const paymentExist = await paymentCollection.findOne(query)
+      if (paymentExist) {
+        return res.send({message:"already exist", transactionId})
+      }
       if (session.payment_status === "paid") {
         const {
           hrId,
@@ -290,7 +306,7 @@ async function run() {
     });
 
     // hrManager collection
-    app.post("/hrManager", async (req, res) => {
+    app.post("/hrManager", verifyJWT, async (req, res) => {
       const HRInfo = req.body;
       const result = await hrManagerCollection.insertOne(HRInfo);
       res.send(result);
@@ -309,13 +325,13 @@ async function run() {
     });
 
     // assets collection
-    app.post("/assets", async (req, res) => {
+    app.post("/assets", verifyJWT, async (req, res) => {
       const productInfo = req.body;
       const result = await assetsCollection.insertOne(productInfo);
       res.send(result);
     });
 
-    app.patch("/assets/:id", async (req, res) => {
+    app.patch("/assets/:id", verifyJWT, async (req, res) => {
       const id = req.params.id;
       const query = {
         _id: new ObjectId(id),
@@ -336,7 +352,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/assets", async (req, res) => {
+    app.get("/assets", verifyJWT, async (req, res) => {
       const { search, email } = req.query;
       const query = {};
       if (email) {
@@ -353,7 +369,7 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/assets/:id", async (req, res) => {
+    app.delete("/assets/:id", verifyJWT, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await assetsCollection.deleteOne(query);
@@ -367,7 +383,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/requestData", async (req, res) => {
+    app.get("/requestData", verifyJWT, async (req, res) => {
       // const email = req.params.email
       const { search, filter, email } = req.query;
       let query = {};
@@ -446,10 +462,10 @@ async function run() {
     });
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
   } finally {
     // Ensures that the client will close when you finish/error
   }
