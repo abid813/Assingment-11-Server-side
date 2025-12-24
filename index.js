@@ -34,6 +34,15 @@ const verifyJWT = async (req, res, next) => {
   }
 };
 
+
+// Create a MongoClient with a MongoClientOptions object to set the Stable API version
+// const client = new MongoClient(uri, {
+//   serverApi: {
+//     version: ServerApiVersion.v1,
+//     strict: true,
+//     deprecationErrors: true,
+//   }
+// });
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(process.env.MONGODB_URI, {
   serverApi: {
@@ -44,7 +53,7 @@ const client = new MongoClient(process.env.MONGODB_URI, {
 });
 async function run() {
   try {
-    const db = client.db("AssetVerse");
+    const db = client.db("finalAssignment");
     const employeeCollection = db.collection("Employee");
     const hrManagerCollection = db.collection("HrManager");
     const packagesCollection = db.collection("Packages");
@@ -70,7 +79,7 @@ async function run() {
     })
 
     //  employee collection
-    app.post("/employee", verifyJWT, async (req, res) => {
+    app.post("/employee", async (req, res) => {
       const employeeInfo = req.body;
       const result = await employeeCollection.insertOne(employeeInfo);
       res.send(result);
@@ -306,7 +315,7 @@ async function run() {
     });
 
     // hrManager collection
-    app.post("/hrManager", verifyJWT, async (req, res) => {
+    app.post("/hrManager", async (req, res) => {
       const HRInfo = req.body;
       const result = await hrManagerCollection.insertOne(HRInfo);
       res.send(result);
