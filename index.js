@@ -68,7 +68,7 @@ async function run() {
     });
 
     // paymentCollection
-    app.get("/payment", async (req, res) => {
+    app.get("/payment", verifyJWT, async (req, res) => {
       const email = req.query.email
       const query = {}
       if (email) {
@@ -85,7 +85,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/employee/companies/:email",verifyJWT, async (req, res) => {
+    app.get("/employee/companies/:email", async (req, res) => {
       const email = req.params.email;
 
       const employee = await employeeCollection.findOne({ email });
@@ -100,7 +100,7 @@ async function run() {
       res.send(companies);
     });
 
-    app.get("/team/:hrUid", verifyJWT, async (req, res) => {
+    app.get("/team/:hrUid", async (req, res) => {
       const hrUid = req.params.hrUid;
 
       const team = await employeeCollection
@@ -166,7 +166,7 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/employee/:id", verifyJWT, async (req, res) => {
+    app.patch("/employee/:id", async (req, res) => {
       const {
         HRManagerUid,
         assetCount,
@@ -208,7 +208,7 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/employee/:id", verifyJWT, async (req, res) => {
+    app.delete("/employee/:id", async (req, res) => {
       const id = req.query.hrId;
       const query = { _id: new ObjectId(req.params.id) };
       const result = await employeeCollection.deleteOne(query);
@@ -222,7 +222,7 @@ async function run() {
     });
 
     // payment related api
-    app.post("/create-checkout-session", verifyJWT, async (req, res) => {
+    app.post("/create-checkout-session", async (req, res) => {
       const {
         packageName,
         packageCost,
@@ -267,7 +267,7 @@ async function run() {
       res.send({ url: session.url });
     });
 
-    app.patch("/payment-success", verifyJWT, async (req, res) => {
+    app.patch("/payment-success", async (req, res) => {
       const sessionId = req.query.session_id;
       const session = await stripe.checkout.sessions.retrieve(sessionId);
       const transactionId = session.payment_intent
@@ -334,13 +334,13 @@ async function run() {
     });
 
     // assets collection
-    app.post("/assets", verifyJWT, async (req, res) => {
+    app.post("/assets", async (req, res) => {
       const productInfo = req.body;
       const result = await assetsCollection.insertOne(productInfo);
       res.send(result);
     });
 
-    app.patch("/assets/:id", verifyJWT, async (req, res) => {
+    app.patch("/assets/:id", async (req, res) => {
       const id = req.params.id;
       const query = {
         _id: new ObjectId(id),
@@ -361,7 +361,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/assets", verifyJWT, async (req, res) => {
+    app.get("/assets", async (req, res) => {
       const { search, email } = req.query;
       const query = {};
       if (email) {
@@ -378,7 +378,7 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/assets/:id", verifyJWT, async (req, res) => {
+    app.delete("/assets/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await assetsCollection.deleteOne(query);
@@ -392,7 +392,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/requestData", verifyJWT, async (req, res) => {
+    app.get("/requestData", async (req, res) => {
       // const email = req.params.email
       const { search, filter, email } = req.query;
       let query = {};
